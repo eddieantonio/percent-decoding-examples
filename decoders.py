@@ -25,7 +25,8 @@ def suggested_method(text):
     """
     The suggested algorithm for decoding percent-encoded UTF-8 strings.
     """
-    # Since the %xx triplets **bytes**, convert the input to a bytes object.
+    # Since the %xx triplets encode **bytes**, convert the input to a bytes
+    # object.
     undecoded = text.encode('UTF-8')
 
     # We'll accumulate each byte into the output
@@ -35,20 +36,29 @@ def suggested_method(text):
         i = undecoded.index(b'%')
         # Everything before the % goes directly to the output
         output += undecoded[:i]
-        undecoded = undecoded[i:]
 
+        # Now, let the unencoded part start at the first % remaining in the
+        # byte sequence.
+        undecoded = undecoded[i:]
         assert chr(undecoded[0]) == '%'
+
+        # Finally! We decode the %xx triplet and append it to the output.
         byte = unhexlify(undecoded[1:3])
         output += byte
+        # Let undecoded be the part AFTER the %xx triplet we just decoded.
         undecoded = undecoded[3:]
 
+    # The undecoded portion has no more %xx triplets; append the rest of the
+    # byes to the output.
     output += undecoded
+
+    # Convert the UTF-8 encoded bytes back to a string.
     return output.decode('UTF-8')
 
 
 def re_sub(text):
     """
-    Using re.sub to invidually replace %XX triplets with bytes.
+    Using re.sub to individually replace %xx triplets with bytes.
     """
     def decode_triplet(match):
         hex_digits = match.group()[1:]
@@ -131,7 +141,7 @@ def partial_utf_8_decoder(undecoded):
             undecoded = undecoded[3:]
         output += utf8_sequence.decode('UTF-8')
 
-    # The rest is guarenteed to NOT have a %xx triplet, so append it to the
+    # The rest is guaranteed to NOT have a %xx triplet, so append it to the
     # output.
     output += undecoded
     return output
