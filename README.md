@@ -5,6 +5,12 @@ A few different methods for performing percent-decoding in Python 3.
 
 See `decoders.py`.
 
+**NOTE**: These methods only work for *valid* percent-encoded strings.
+The algorithms presented are **NOT** robust against invalid sequences.
+There are a lot of UTF-8 sequences that are invalid, and should not be
+decoded. As such, **DO NOT** use these algorithms in real code. Instead,
+use what's builtin to your language, such as `from urllib.parse import
+unquote`.
 
 To run the tests
 ----------------
