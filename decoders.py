@@ -70,12 +70,15 @@ def partial_utf_8_decoder(undecoded):
     """
     Decodes by finding the first percent-encoded string and determining how
     many more percent-encoded bytes follow it in UTF-8 encoding.
+    By Unicode terminology, when a percent is found, this algorithm proceeds
+    to decode the "minimal well-formed code unit subsequence", i.e., the
+    minimum number of bytes (or %xx) that will form one valid UTF-8 character.
     """
 
     def decode_triplet(text):
         """
-        Helper that decodes the triplet at the beginning of the string.
-        Returns one byte from three characters.
+        Helper that decodes the %xx triplet at the beginning of `text`.
+        Returns one byte from three characters in `text`.
         """
         assert text.startswith('%')
         return bytes.fromhex(text[1:3])
@@ -96,7 +99,7 @@ def partial_utf_8_decoder(undecoded):
         #
         # Bits      | Range   | Length
         # --------- | ------- | -------
-        # 0xxx xxxx | %00-%7f | 1 byte   (ASCII character)
+        # 0xxx xxxx | %00-%7f | 1 byte   (equivalent to ASCII)
         # 110x xxxx | %C0-%DF | 2 bytes
         # 1110 xxxx | %E0-%EF | 3 bytes
         # 1111 0xxx | %F0-%F7 | 4 bytes
