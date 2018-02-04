@@ -36,19 +36,19 @@ def suggested_method(text):
         # Everything before the % goes directly to the output
         output += undecoded[:i]
 
-        # Now, let the unencoded part start at the first % remaining in the
-        # byte sequence.
+        # Now, the unencoded part starts at the first % in the byte sequence.
         undecoded = undecoded[i:]
-        assert chr(undecoded[0]) == '%'
+        assert undecoded.startswith(b'%')
 
-        # Finally! We decode the %xx triplet and append it to the output.
+        # We decode the %xx triplet and append it to the output.
         byte = unhexlify(undecoded[1:3])
         output += byte
-        # Let undecoded be the part AFTER the %xx triplet we just decoded.
+        # Now, the undecoded part is everything AFTER the %xx triplet we just
+        # decoded.
         undecoded = undecoded[3:]
 
     # The undecoded portion has no more %xx triplets; append the rest of the
-    # byes to the output.
+    # bytes to the output.
     output += undecoded
 
     # Convert the UTF-8 encoded bytes back to a string.
@@ -60,11 +60,25 @@ def re_sub(text):
     Using re.sub to individually replace %xx triplets with bytes.
     """
     def decode_triplet(match):
+        """
+        Given a regular expression match object for a match of %xx,
+        decodes the xx as hex digits and returns a byte.
+        """
         hex_digits = match.group()[1:]
         return unhexlify(hex_digits)
 
     undecoded = text.encode('UTF-8')
-    output = re.sub(b'%[0-9A-Fa-f]{2}', decode_triplet, undecoded)
+
+    # Use a regular expression on bytes to match a %xx sequence:
+    # %             -- matches a literal percent
+    # [0-9A-Fa-f]   -- matches a hexadecimal digit
+    # {2}           -- match two of the last thing (in this case,
+    #                  match two hexadecimal digits)
+    pattern = b'%[0-9A-Fa-f]{2}'
+
+    # sub() substitutes all instances of the pattern in the undecoded bytes
+    # sequence with whatever "decode_triplet" returns (a decoded byte).
+    output = re.sub(pattern, decode_triplet, undecoded)
     return output.decode('UTF-8')
 
 
