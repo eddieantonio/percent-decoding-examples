@@ -25,10 +25,15 @@ def suggested_method(text):
     """
     The suggested algorithm for decoding percent-encoded UTF-8 strings.
     """
+    # Since the %xx triplets **bytes**, convert the input to a bytes object.
     undecoded = text.encode('UTF-8')
+
+    # We'll accumulate each byte into the output
     output = b''
+
     while b'%' in undecoded:
         i = undecoded.index(b'%')
+        # Everything before the % goes directly to the output
         output += undecoded[:i]
         undecoded = undecoded[i:]
 
@@ -71,8 +76,11 @@ def partial_utf_8_decoder(undecoded):
     Decodes by finding the first percent-encoded string and determining how
     many more percent-encoded bytes follow it in UTF-8 encoding.
     By Unicode terminology, when a percent is found, this algorithm proceeds
-    to decode the "minimal well-formed code unit subsequence", i.e., the
+    to decode the "minimal well-formed code unit subsequence" [1], i.e., the
     minimum number of bytes (or %xx) that will form one valid UTF-8 character.
+
+    [1]: Unicode Standard D85a
+         http://www.unicode.org/versions/Unicode10.0.0/ch03.pdf#G7404
     """
 
     def decode_triplet(text):
@@ -105,36 +113,26 @@ def partial_utf_8_decoder(undecoded):
         # 1111 0xxx | %F0-%F7 | 4 bytes
 
         if first_byte <= b'\x7F':
-            # An ASCII byte.
-            output += first_byte.decode('ASCII')
-            # Take this triple out of the sequence
-            undecoded = undecoded[3:]
+            n_bytes = 1
         elif b'\xC0' <= first_byte <= b'\xDF':
-            # Two byte sequence.
-            output += (
-                first_byte +
-                decode_triplet(undecoded[3:])
-            ).decode('UTF-8')
-            undecoded = undecoded[6:]
+            n_bytes = 2
         elif b'\xE0' <= first_byte <= b'\xEF':
-            # Three byte sequence.
-            output += (
-                first_byte +
-                decode_triplet(undecoded[3:]) +
-                decode_triplet(undecoded[6:])
-            ).decode('UTF-8')
-            undecoded = undecoded[9:]
+            n_bytes = 3
         elif b'\xF0' <= first_byte <= b'\xF7':
-            # Four byte sequence.
-            output += (
-                first_byte +
-                decode_triplet(undecoded[3:]) +
-                decode_triplet(undecoded[6:]) +
-                decode_triplet(undecoded[9:])
-            ).decode('UTF-8')
-            undecoded = undecoded[12:]
+            n_bytes = 4
         else:
-            raise ValueError(first_byte)
+            raise ValueError("Invalid UTF-8 starting byte: " + first_byte)
+
+        # Decode just enough %xx triplets to create one UTF-8 encoded
+        # character.
+        utf8_sequence = b''
+        for _ in range(n_bytes):
+            utf8_sequence += decode_triplet(undecoded)
+            undecoded = undecoded[3:]
+        output += utf8_sequence.decode('UTF-8')
+
+    # The rest is guarenteed to NOT have a %xx triplet, so append it to the
+    # output.
     output += undecoded
     return output
 
